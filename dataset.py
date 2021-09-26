@@ -2,6 +2,7 @@ import re
 import ast
 import string
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import torch
@@ -38,7 +39,6 @@ class Dataset(torch.utils.data.Dataset):
         self.targets = [self.label_to_index[qt] for qt in self.question_types]
 
     def get_preprocessed_data(self):
-        dataset = None
         with open(self.path) as f:
             rows = []
             for line in f.readlines():
@@ -47,13 +47,11 @@ class Dataset(torch.utils.data.Dataset):
                 except:
                     print("ERROR: unable to load json for entry: {}".format(line))
 
-            dataset = pd.DataFrame(rows)
-
-        dataset_filtered = dataset.loc[:, ["asin", "questionType", "question"]]
+        dataset = np.array([[row['asin'], row['questionType'], row['question']] for row in rows])
 
         questions = []
         question_types = []
-        for row in dataset_filtered.to_numpy():
+        for row in dataset:
             # Preprocess questions
             inp = self.preprocess_text(row[2])
 
@@ -101,11 +99,13 @@ class Dataset(torch.utils.data.Dataset):
 
         return padded_sequences
 
+    #
     def get_train_val_test_split(self, X, y, train_val_split, val_test_split):
         X_train, X_testing, y_train, y_testing = train_test_split(X, y, test_size=train_val_split, random_state=42)
         X_val, X_test, y_val, y_test = train_test_split(X_testing, y_testing, test_size=val_test_split, random_state=42)
         return [X_train, y_train], [X_val, y_val], [X_test, y_test]
 
+    #
     def print_documents_length_info(self):
         input_Sequence_lengths = [len(inp) for inp in self.input_sequences]
         shortest_seq_length = min(input_Sequence_lengths)
@@ -115,3 +115,5 @@ class Dataset(torch.utils.data.Dataset):
         pd.Series(input_Sequence_lengths).hist()
         plt.show()
         print(pd.Series(input_Sequence_lengths).describe())
+
+
